@@ -1,0 +1,64 @@
+import { Meta, Story, Canvas } from '@storybook/addon-docs/blocks'
+import { Provider } from '../../Provider'
+import { Nodes, PointNodes } from '../index'
+import { Sphere, Stats, Html } from '@react-three/drei'
+import generateDateValue, {
+  DateValue
+} from '@visx/mock-data/lib/generators/genDateValue'
+import { interpolate } from 'flubber'
+
+<Meta
+  title="View/Graph/Nodes/Morph"
+  component={Nodes}
+  decorators={[
+    (Story) => (
+      <Provider
+        {...{
+          orthographic: true,
+          colorManagement: true,
+          concurrent: true,
+          camera: { near: -10000, far: 10000 },
+          style: { width: '100%', minHeight: 600 }
+        }}
+      >
+        <Stats />
+        <Story />
+      </Provider>
+    )
+  ]}
+/>
+
+[Example #1](https://react-move-docs.netlify.app/#/demos/animate)
+
+export const triangle = [
+  [1, 0],
+  [2, 2],
+  [0, 2]
+].map((vec) => vec.map((p) => p * 100))
+
+export const pentagon = [
+  [0, 0],
+  [2, 0],
+  [2, 1],
+  [1, 2],
+  [0, 1]
+].map((vec) => vec.map((p) => p * 100))
+
+export const Flubber = () => {
+  const [flubber] = React.useState(() =>
+    interpolate(triangle, pentagon, { string: false })
+  )
+  const [[a, nodes], setNodes] = React.useState([0, flubber(0)])
+  React.useEffect(() => {
+    setTimeout(() => {
+      setNodes(a === 0 ? [1, flubber(1)] : [0, flubber(0)])
+    }, 1000)
+  })
+  return <Nodes {...{ nodes }} />
+}
+
+<Canvas>
+  <Story name="Flubber">
+    <Flubber />
+  </Story>
+</Canvas>

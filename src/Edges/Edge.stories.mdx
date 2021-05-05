@@ -1,0 +1,55 @@
+import { Meta, Story, Canvas } from '@storybook/addon-docs/blocks'
+import * as THREE from 'three'
+import { Provider } from '../Provider'
+import { Edge } from './index'
+import { Nodes } from '../Nodes'
+import { Sphere, Stats, Html } from '@react-three/drei'
+import { createBezier } from '../utils/createBezier'
+
+<Meta title="View/Graph/Edges" component={Edge} />
+
+# Edges
+
+export const p = () =>
+  Math.floor(Math.random() * 100 * (Math.random() > 0.5 ? -1 : 1))
+
+export const generateBezier = () =>
+  createBezier({ s1: [p(), p(), 0], t1: [p(), p(), 0] })
+
+export const EdgeStory = ({
+  node1 = { x: -5, y: 0 },
+  node2 = { x: 5, y: 0 }
+}) => {
+  const [points, setPoints] = React.useState(generateBezier())
+  const [geometry] = React.useState(() => new THREE.CircleBufferGeometry(5, 32))
+  React.useEffect(() => {
+    setTimeout(() => {
+      console.log('timeout', typeof OffscreenCanvas)
+      setPoints(generateBezier())
+    }, 1000)
+  })
+  return (
+    <React.Fragment>
+      <Stats />
+      <Sphere />
+      <Nodes {...{ nodes: [points[0], points[points.length - 1]], geometry }} />
+      <Edge {...{ points }} />
+    </React.Fragment>
+  )
+}
+
+<Canvas>
+  <Story name="Animated Edge">
+    <Provider
+      {...{
+        orthographic: true,
+        colorManagement: true,
+        concurrent: true,
+        camera: { near: -10000, far: 10000 },
+        style: { width: '100%', height: 600 }
+      }}
+    >
+      <EdgeStory />
+    </Provider>
+  </Story>
+</Canvas>

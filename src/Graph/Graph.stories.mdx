@@ -1,0 +1,29 @@
+import { Meta, Canvas, Story } from '@storybook/addon-docs/blocks'
+import { Graph } from './index'
+import { getWorker } from './dagre'
+
+<Meta title="View/Graph" component={Graph} />
+
+# Graph
+
+export const Worker = (props) => {
+  const worker = React.useRef()
+  React.useEffect(() => {
+    if (!worker.current) {
+      getWorker().then((w) => {
+        console.log(w)
+        worker.current = w
+      })
+    }
+  })
+  return <div>Worker</div>
+}
+
+<Canvas>
+  <Story name="default">
+    <Graph />
+  </Story>
+  <Story name="Worker">
+    <Worker />
+  </Story>
+</Canvas>
