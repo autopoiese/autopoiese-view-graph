@@ -5,6 +5,7 @@ import { LineMaterial } from 'three-stdlib/lines/LineMaterial'
 import { Line2 } from 'three-stdlib/lines/Line2'
 import { animated, useSpring } from '@react-spring/three'
 import { convertPosition } from './convertPosition'
+import { Vector } from '../types'
 
 const toSpringObject = (array) =>
   array.reduce(
@@ -15,78 +16,107 @@ const toSpringObject = (array) =>
     {}
   )
 
-export const Edge = ({
-  color = 'red',
-  vertexColors,
-  points = [
-    [0, 0, 0],
-    [1, 1, 1],
-    [2, 2, 2]
-  ],
-  dashed,
-  lineWidth = 1,
-  ...rest
-}) => {
-  const [line2] = React.useState(() => new Line2())
-  const [lineGeometry] = React.useState(() => new LineGeometry())
-  const [lineMaterial] = React.useState(() => new LineMaterial())
-  const [resolution] = React.useState(() => new THREE.Vector2(512, 512))
-  const buffer = React.useRef<THREE.InstancedInterleavedBuffer>()
-  React.useEffect(() => {
-    lineMaterial.linewidth = lineWidth
-    lineMaterial.needsUpdate = true
-  }, [lineWidth])
-  const array = React.useMemo(() => convertPosition(points), [])
-  const spring = useSpring({
-    from: toSpringObject(array),
-    to: toSpringObject(convertPosition(points)),
-    onChange: () => {
-      if (!!buffer.current) {
-        buffer.current.needsUpdate = true
+const toArray = (v: Vector) =>
+  [...(Array.isArray(v) ? v : [v.x, v.y, v.z || 0]), 0, 0, 0].slice(0, 3)
+
+type EdgeProps = {
+  color?: string
+  points: (
+    | { x: number; y: number; z?: number }
+    | [number, number]
+    | [number, number, number]
+  )[]
+  vertexColors?: number[] | Float32Array
+  dashed?: boolean
+  lineWidth?: number
+}
+
+export const Edge = React.forwardRef<any, EdgeProps>(
+  (
+    {
+      color = 'red',
+      vertexColors,
+      points = [
+        [0, 0, 0],
+        [1, 1, 1],
+        [2, 2, 2]
+      ],
+      dashed,
+      lineWidth = 1,
+      ...rest
+    },
+    ref
+  ) => {
+    const [line2] = React.useState(() => new Line2())
+    const [lineGeometry] = React.useState(() => new LineGeometry())
+    const [lineMaterial] = React.useState(() => new LineMaterial())
+    const [resolution] = React.useState(() => new THREE.Vector2(512, 512))
+    const buffer = React.useRef<THREE.InstancedInterleavedBuffer>()
+    React.useEffect(() => {
+      lineMaterial.linewidth = lineWidth
+      lineMaterial.side = THREE.DoubleSide
+      lineMaterial.needsUpdate = true
+    }, [lineWidth])
+    const { object, array } = React.useMemo(() => {
+      const array = convertPosition(points)
+      const InstancedInterleavedBuffer = new THREE.InstancedInterleavedBuffer(
+        array,
+        6,
+        1
+      )
+      return { object: InstancedInterleavedBuffer, array }
+    }, [])
+    const spring = useSpring({
+      from: toSpringObject(array),
+      to: toSpringObject(convertPosition(points)),
+      onChange: () => {
+        if (!!buffer.current) {
+          buffer.current.needsUpdate = true
+        }
       }
-    }
-  })
-  React.useEffect(() => {
-    lineGeometry.setPositions(points.flat())
-    if (vertexColors) lineGeometry.setColors(vertexColors.flat())
-    if (buffer.current) {
-      ;(lineGeometry.attributes
-        .instanceStart as THREE.InterleavedBufferAttribute).data =
-        buffer.current
-      ;(lineGeometry.attributes
-        .instanceEnd as THREE.InterleavedBufferAttribute).data = buffer.current
-    }
-    line2.computeLineDistances()
-  }, [vertexColors, line2, lineGeometry])
-  React.useLayoutEffect(() => {
-    if (dashed) {
-      lineMaterial.defines.USE_DASH = ''
-    } else {
-      // Setting lineMaterial.defines.USE_DASH to undefined is apparently not sufficient.
-      delete lineMaterial.defines.USE_DASH
-    }
-    lineMaterial.needsUpdate = true
-  }, [dashed, lineMaterial])
-  return (
-    <primitive {...{ dispose: undefined, object: line2 }}>
-      <primitive {...{ object: lineGeometry, attach: 'geometry' }}>
-        <animated.instancedInterleavedBuffer
-          {...{ ref: buffer, args: [array, 6, 1], ...spring }}
+    })
+    React.useEffect(() => {
+      const positions: number[] = points.map(toArray).flat()
+      lineGeometry.setPositions(positions)
+      if (vertexColors) lineGeometry.setColors(vertexColors?.flat?.())
+      if (buffer.current) {
+        ;(lineGeometry.attributes
+          .instanceStart as THREE.InterleavedBufferAttribute).data =
+          buffer.current
+        ;(lineGeometry.attributes
+          .instanceEnd as THREE.InterleavedBufferAttribute).data =
+          buffer.current
+      }
+      line2.computeLineDistances()
+    }, [vertexColors, line2, lineGeometry])
+    React.useLayoutEffect(() => {
+      if (dashed) {
+        lineMaterial.defines.USE_DASH = ''
+      } else {
+        // Setting lineMaterial.defines.USE_DASH to undefined is apparently not sufficient.
+        delete lineMaterial.defines.USE_DASH
+      }
+      lineMaterial.needsUpdate = true
+    }, [dashed, lineMaterial])
+    return (
+      <primitive {...{ ref, object: line2 }}>
+        <primitive {...{ object: lineGeometry, attach: 'geometry' }}>
+          <animated.primitive {...{ ref: buffer, object, ...spring }} />
+        </primitive>
+        <primitive
+          dispose={undefined}
+          object={lineMaterial}
+          attach="material"
+          color={color}
+          vertexColors={Boolean(vertexColors)}
+          resolution={resolution}
+          dashed={dashed}
+          {...rest}
         />
       </primitive>
-      <primitive
-        dispose={undefined}
-        object={lineMaterial}
-        attach="material"
-        color={color}
-        vertexColors={Boolean(vertexColors)}
-        resolution={resolution}
-        dashed={dashed}
-        {...rest}
-      />
-    </primitive>
-  )
-}
+    )
+  }
+)
 
 // export const Link: React.FC<LinkProps> = observer(({ link, ...props }) => {
 //   //: { source, target, color = source?.type === 'Question' ? peach : green, lineWidth, ...link }, ...props }) => {

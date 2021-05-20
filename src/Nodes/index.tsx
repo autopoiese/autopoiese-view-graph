@@ -77,7 +77,7 @@ export const Nodes: React.FC<NodesProps> = ({
           args: [null as any, null as any, maxInstances]
         }}
       >
-        <meshBasicMaterial {...{ color: 'red' }} />
+        <meshBasicMaterial {...{ color: 'red', side: THREE.DoubleSide }} />
       </instancedMesh>
       {/* <instancedMesh
         {...{

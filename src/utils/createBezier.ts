@@ -1,15 +1,17 @@
 import * as THREE from 'three'
 import { Vector3, Vector2 } from '../types'
-
+import { toArray } from './toArray'
 const HORIZONTAL = 'horizontal'
 const VERTICAL = 'vertical'
 
 export const createBezier = ({
-  s1,
-  t1,
+  s1: s,
+  t1: t,
   divisions = 64,
   orientation = HORIZONTAL
 }): Vector3[] => {
+  const s1 = toArray(s)
+  const t1 = toArray(t)
   const offset =
     (orientation === HORIZONTAL ? t1[0] - s1[0] : t1[1] - s1[1]) / 2
   const [s2, t2]: Vector2[] = ([
