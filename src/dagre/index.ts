@@ -1,17 +1,18 @@
 import { default as dagre, graphlib, Node, GraphEdge as Edge } from 'dagre'
+import { GraphConfig } from './types'
 
-export const initGraph = () => {
+export const initGraph = (config?: GraphConfig) => {
   const graph = new graphlib.Graph()
 
   graph.setGraph({
-  //   // // align: 'DL',
-  //   // acyclicer: 'greedy',
-  //   // ranker: 'network-simplex', //'tight-tree',
+    align: 'DL',
+    acyclicer: 'greedy',
+    ranker: 'network-simplex', //'tight-tree',
     rankdir: 'LR',
     edgesep: 5,
-  //   // ranksep: 150
+    ...config
+    //   // ranksep: 150
   })
-
 
   graph.setDefaultEdgeLabel(function () {
     return {}
@@ -34,15 +35,13 @@ export const initGraph = () => {
       return graph.edge(edge)
     })
 
-  const setEdges = (...edges) => {
-    edges.forEach((edge) => graph.setEdge(edge))
+  const setEdges = (...edges: Parameters<graphlib.Graph['setEdge']>[]) => {
+    edges.forEach((edge) => graph.setEdge(...edge))
   }
 
   const updateLayout = () => {
     dagre.layout(graph)
   }
-
-
 
   return {
     getNodes,
