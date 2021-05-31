@@ -5,7 +5,7 @@ import { LineMaterial } from 'three-stdlib/lines/LineMaterial'
 import { Line2 } from 'three-stdlib/lines/Line2'
 import { animated, useSpring } from '@react-spring/three'
 import { convertPosition } from './convertPosition'
-import { Vector } from '../types'
+import { toVector3Array } from '@autopoiese/cad-viewer'
 
 const toSpringObject = (array) =>
   array.reduce(
@@ -15,9 +15,6 @@ const toSpringObject = (array) =>
     }),
     {}
   )
-
-const toArray = (v: Vector) =>
-  [...(Array.isArray(v) ? v : [v.x, v.y, v.z || 0]), 0, 0, 0].slice(0, 3)
 
 type EdgeProps = {
   color?: string
@@ -76,7 +73,7 @@ export const Edge = React.forwardRef<any, EdgeProps>(
       }
     })
     React.useEffect(() => {
-      const positions: number[] = points.map(toArray).flat()
+      const positions: number[] = points.map(toVector3Array).flat()
       lineGeometry.setPositions(positions)
       if (vertexColors) lineGeometry.setColors(vertexColors?.flat?.())
       if (buffer.current) {
