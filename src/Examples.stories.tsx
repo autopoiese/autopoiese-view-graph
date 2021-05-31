@@ -5,8 +5,14 @@ import { initGraph } from './dagre'
 import { Nodes } from './Nodes'
 import { Edge } from './Edges'
 import { Setup } from '@autopoiese/stories'
-import { Center, useHelper } from '@react-three/drei'
+import { Center, useHelper, Text } from '@react-three/drei'
 import { createBezier } from './utils/createBezier'
+import {
+  CameraControls,
+  fitCamera,
+  useFitCamera,
+  toVector3
+} from '@autopoiese/cad-viewer'
 
 export default {
   title: 'View/Graph/examples',
@@ -16,17 +22,27 @@ export default {
       <Setup
         {...{
           orthographic: true,
-          controls: true,
-          camera: { near: -1000, far: 10000 }
+          controls: false, //'experimental',
+          camera: { near: -1000, far: 10000, position: [0, 0, 100] }
         }}
       >
         {Story()}
+        <CameraControls
+          {...{
+            dollyToCursor: true,
+            mouseButtons: {
+              left: CameraControls.ACTION.OFFSET,
+              wheel: CameraControls.ACTION.ZOOM,
+              right: CameraControls.ACTION.ROTATE
+            }
+          }}
+        />
       </Setup>
     )
   ]
 } as Meta
 
-// const tags = ['os', 'graph', 'markdown', 'native', 'browser', 'api', "ai"]
+// // const tags = ['os', 'graph', 'markdown', 'native', 'browser', 'api', "ai"]
 
 const apps = [
   { name: 'Roam', url: 'https://roamresearch.com/', tags: ['graph'] },
@@ -34,6 +50,18 @@ const apps = [
     name: 'logseq',
     url: 'https://logseq.com/',
     tags: ['browser', 'graph', 'os']
+  },
+  {
+    name: 'Workflowy',
+    url: 'https://workflowy.com'
+  },
+  {
+    name: 'Org Mode',
+    url: 'https://orgmode.org/'
+  },
+  {
+    name: 'TiddlyWiki',
+    url: 'https://tiddlywiki.com/'
   },
   {
     name: 'Anytype',
@@ -78,7 +106,7 @@ const tags = Object.keys(
   apps.reduce(
     (p, { tags }) => ({
       ...p,
-      ...tags.reduce((p, c) => ({ ...p, [c]: null }), {})
+      ...tags?.reduce((p, c) => ({ ...p, [c]: null }), {})
     }),
     {}
   )
@@ -93,7 +121,7 @@ const edgeData: EdgeTuple[] = [
       [
         ...p,
         [app.name, 'app'],
-        ...app.tags.map((t) => [app.name, t] as const)
+        ...(app.tags?.map((t) => [app.name, t] as const) ?? [])
       ] as EdgeTuple[],
     []
   )
@@ -102,50 +130,92 @@ const edgeData: EdgeTuple[] = [
 type NodeTuple = [string, { label: string }]
 
 const nodeData: NodeTuple[] = [
+  'tag',
+  'app',
   ...tags,
   ...apps.map(({ name }) => name)
-].map((name) => [name, { label: name }])
+].map((name) => [name, { label: name, width: 20, height: 10 }])
 
-const graph = initGraph()
+const graph = initGraph({
+  acyclicer: 'greedy',
+  ranker: 'longest-path', //'network-simplex', //'tight-tree',
+  rankdir: 'RL',
+  align: 'DR',
+  edgesep: 10,
+  nodesep: 10,
+  ranksep: 100
+})
 
-graph.setNodes(
-  ...nodeData
-  // ['kspacey', { label: 'Kevin Spacey', width: 10, height: 10 }],
-  // ['swilliams', { label: 'Saul Williams', width: 10, height: 10 }],
-  // ['bpitt', { label: 'Brad Pitt', width: 10, height: 10 }],
-  // ['hford', { label: 'Harrison Ford', width: 10, height: 10 }],
-  // ['lwilson', { label: 'Luke Wilson', width: 10, height: 10 }],
-  // ['kbacon', { label: 'Kevin Bacon', width: 10, height: 10 }]
-)
-graph.setEdges(
-  ['kspacey', 'swilliams'],
-  ['swilliams', 'kbacon'],
-  ['bpitt', 'kbacon'],
-  ['hford', 'lwilson'],
-  ['lwilson', 'kbacon']
-)
+graph.setNodes(...nodeData)
+graph.setEdges(...edgeData)
 const nodes = graph.getNodes().filter((node) => !!node)
 const edges = graph.getEdges()
 
 graph.updateLayout()
 
+const geom = new THREE.BufferGeometry().setFromPoints(
+  nodes.map(({ x, y }) => new THREE.Vector2(x, y))
+)
+geom.computeBoundingBox()
+const size = new THREE.Vector3()
+
+geom.boundingBox.getSize(size)
+
+const { x, y, z } = size
+
 const Component = (props) => {
-  console.log(edges, nodes, graph.graph)
-  const ref = React.useRef()
-  useHelper(ref, THREE.BoxHelper)
+  const box3 = React.useMemo(() => {
+    const { width, height } = graph.graph.graph()
+
+    const box3 = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(),
+      new THREE.Vector3(width, height, 0)
+    )
+
+    return box3
+  }, [])
+
+  useFitCamera({ object: box3 })
   return (
-    <Center>
-      <group {...{ ref }}>
-        <Nodes {...{ nodes }} />
-        {edges.map((edge, key) => {
-          const points = createBezier({
-            s1: edge.points[0],
-            t1: edge.points[2]
-          })
-          return <Edge {...{ points, lineWidth: 2, key }} />
-        })}
-      </group>
-    </Center>
+    <group
+      {...{
+        position: [x / 2, y / -2, z / 2]
+        // onUpdate: (node: THREE.Group) => {
+        //   if (node) {
+        //     const size = new THREE.Vector3()
+        //     new THREE.Box3().setFromObject(node).getSize(size)
+        //     // node.position.set(min.x, min.y, min.z)
+        //     console.log('NODE', size)
+        //   }
+        // }
+      }}
+    >
+      <Nodes {...{ nodes }} />
+      {nodes.map(({ label, x, y }) => (
+        <Text
+          {...{
+            position: [x, y, 0],
+            color: 'red',
+            fontSize: 10,
+            key: label,
+            textAlign: 'left',
+            anchorX: 'left'
+          }}
+        >
+          {label}
+        </Text>
+      ))}
+      {edges.map((edge, key) => {
+        const points = createBezier({
+          s1: edge.points[0],
+          t1: edge.points[2]
+        })
+        // const points = edge.points.map(toVector3)
+        // console.log(edge.points, points)
+        return <Edge {...{ points, lineWidth: 0.2, key }} />
+      })}
+      <axesHelper {...{ args: [1000] }} />
+    </group>
   )
 }
 
