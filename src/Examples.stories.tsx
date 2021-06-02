@@ -180,14 +180,6 @@ const Component = (props) => {
     <group
       {...{
         position: [x / 2, y / -2, z / 2]
-        // onUpdate: (node: THREE.Group) => {
-        //   if (node) {
-        //     const size = new THREE.Vector3()
-        //     new THREE.Box3().setFromObject(node).getSize(size)
-        //     // node.position.set(min.x, min.y, min.z)
-        //     console.log('NODE', size)
-        //   }
-        // }
       }}
     >
       <Nodes {...{ nodes }} />
